@@ -3,14 +3,22 @@ import pandas as pd
 import folium
 from streamlit_folium import st_folium
 
+# Configuración inicial
 st.set_page_config(page_title="Gestión de Despachos Ecuador", layout="wide")
+
+# Estilo personalizado para mejorar la visibilidad (similar a tu captura)
+st.markdown("""
+    <style>
+    .main { background-color: #0e1117; }
+    .stSelectbox, .stTextInput { color: white; }
+    </style>
+    """, unsafe_allow_html=True)
 
 st.title("🚛 Sistema de Despachos y Cobertura Nacional")
 
-# Base de datos completa basada en las imágenes proporcionadas
+# Base de datos completa basada en tus imágenes
 data = [
     {"Despacho": "BODEGA GUAYAQUIL", "Clientes": "PEQUEÑOS (MENOR A 10 UNIDADES)", "Transporte": "TRAINHCO", "Contacto": "FERNANDO AUCAPIÑA", "Teléfono": "0958921894", "Lat": -2.1894, "Lon": -79.8891},
-    {"Despacho": "CLIENTES GYE COMPLETO", "Clientes": "GUAYAQUIL COMPLETO", "Transporte": "IZCONT", "Contacto": "MAGALY IZQUIERDO", "Teléfono": "0992185765", "Lat": -2.1700, "Lon": -79.9200},
     {"Despacho": "BODEGA QUITO", "Clientes": "CORALES - TIENDAS", "Transporte": "IZCONT", "Contacto": "MAGALY IZQUIERDO", "Teléfono": "0992185765", "Lat": -0.1807, "Lon": -78.4678},
     {"Despacho": "BODEGA MANTA", "Clientes": "MANTA - PORTOVIEJO - MONTECRISTI - SUCRE - JIPIJAPA - SAN VICENTE - ROCAFUERTE - CHARAPOTO - JUNIN", "Transporte": "AUSTROVELO", "Contacto": "DAVID AVILA", "Teléfono": "0969351070", "Lat": -0.9677, "Lon": -80.7127},
     {"Despacho": "BODEGA AMBATO", "Clientes": "CORALES - TIENDAS - LATACUNGA - SALCEDO - PILLARO - PUJILI - CEVALLOS - PELILEO - BAÑOS DE AGUA SANTA", "Transporte": "PIONEROS", "Contacto": "ARTURO AREQUIPA", "Teléfono": "0983246371", "Lat": -1.2417, "Lon": -78.6195},
@@ -25,68 +33,75 @@ data = [
     {"Despacho": "LOS RIOS ZONA BAJA", "Clientes": "MONTALVO - BABAHOYO - PUEBLO VIEJO - BABA - VINCES - SAN JUAN - CALUMA - MATA DE CACAO", "Transporte": "PESADA MENDEZ", "Contacto": "NELSON CHIMBORAZO", "Teléfono": "0993176359", "Lat": -1.8022, "Lon": -79.5344},
     {"Despacho": "BODEGA STO DOMINGO", "Clientes": "STO DOMINGO - CARMEN - PEDERNALES - SAN LORENZO - ESMERALDAS - QUININDE - RIO VERDE - ATACAMES", "Transporte": "MANUEL ORTIZ", "Contacto": "MANUEL ORTIZ", "Teléfono": "0993722448", "Lat": -0.2530, "Lon": -79.1754},
     {"Despacho": "IBARRA", "Clientes": "OTAVALO - TULCAN - IBARRA - CAYAMBE - QUINCHE", "Transporte": "XLM E HIJOS", "Contacto": "JAVIER PEREZ", "Teléfono": "0996129736", "Lat": 0.3517, "Lon": -78.1223},
-    {"Despacho": "CANTONES CUENCA (AZOGUES)", "Clientes": "AZOGUES - CAÑAR - TAMBO - BIBLIAN - DELEG", "Transporte": "TRANSPORTE EMPRESA", "Contacto": "PEDRO DAVILA", "Teléfono": "0998527171", "Lat": -2.7397, "Lon": -78.8486},
-    {"Despacho": "CANTONES CUENCA (GUALACEO)", "Clientes": "GUALACEO - CHORDELEG - SIGSIG - PAUTE", "Transporte": "TRANSPORTE EMPRESA", "Contacto": "PEDRO DAVILA", "Teléfono": "0998527171", "Lat": -2.8914, "Lon": -78.7758},
-    {"Despacho": "CANTONES CUENCA (STA ISABEL)", "Clientes": "STA ISABEL - JIRON - SAN FERNANDO", "Transporte": "TRANSPORTE EMPRESA", "Contacto": "PEDRO DAVILA", "Teléfono": "0998527171", "Lat": -3.2736, "Lon": -79.3142},
-    {"Despacho": "CLIENTES CUENCA", "Clientes": "CUENCA", "Transporte": "TRANSPORTE EMPRESA", "Contacto": "ANDRES VARGAS", "Teléfono": "0987935222", "Lat": -2.9001, "Lon": -79.0059}
+    {"Despacho": "CLIENTES CUENCA", "Clientes": "CUENCA - AZOGUES - CAÑAR - GUALACEO - SIGSIG", "Transporte": "TRANSPORTE EMPRESA", "Contacto": "ANDRES VARGAS", "Teléfono": "0987935222", "Lat": -2.9001, "Lon": -79.0059}
 ]
 
 df = pd.DataFrame(data)
 
-# Sidebar para selección descartable
+# --- SIDEBAR: BUSCADOR Y LISTA ---
 st.sidebar.header("⚙️ Opciones de Filtro")
-seleccion = st.sidebar.selectbox(
-    "Seleccione el punto de Despacho:",
-    options=["TODOS"] + sorted(df["Despacho"].unique().tolist())
-)
 
-# Filtrar DataFrame según selección
-if seleccion != "TODOS":
-    df_display = df[df["Despacho"] == seleccion]
-    centro_lat = df_display["Lat"].iloc[0]
-    centro_lon = df_display["Lon"].iloc[0]
-    zoom = 10
+# Buscador de texto automático
+busqueda = st.sidebar.text_input("🔍 Buscar Ciudad o Cliente:", "").strip().upper()
+
+# Lista desplegable
+nombres_despacho = ["TODOS"] + sorted(df["Despacho"].unique().tolist())
+seleccion_lista = st.sidebar.selectbox("Seleccione el punto de Despacho:", nombres_despacho)
+
+# Lógica de filtrado combinada
+if busqueda:
+    # Filtra si el texto está en el nombre del Despacho O en la lista de Clientes
+    df_filtrado = df[df["Despacho"].str.contains(busqueda) | df["Clientes"].str.contains(busqueda)]
 else:
-    df_display = df
-    centro_lat = -1.8312
-    centro_lon = -78.1834
-    zoom = 7
+    if seleccion_lista == "TODOS":
+        df_filtrado = df
+    else:
+        df_filtrado = df[df["Despacho"] == seleccion_lista]
 
-# Layout
+# --- VISUALIZACIÓN ---
 col_map, col_info = st.columns([2, 1])
 
 with col_map:
-    m = folium.Map(location=[centro_lat, centro_lon], zoom_start=zoom)
+    # Determinar centro del mapa
+    if len(df_filtrado) == 1:
+        centro = [df_filtrado["Lat"].iloc[0], df_filtrado["Lon"].iloc[0]]
+        zoom = 10
+    else:
+        centro = [-1.8312, -78.1834]
+        zoom = 7
+
+    m = folium.Map(location=centro, zoom_start=zoom, tiles="CartoDB dark_matter")
     
-    for _, r in df_display.iterrows():
-        popup_content = f"""
-        <b>{r['Despacho']}</b><br>
-        <b>Transporte:</b> {r['Transporte']}<br>
-        <b>Contacto:</b> {r['Contacto']} ({r['Teléfono']})<br>
-        <hr>
-        <b>Clientes:</b> {r['Clientes']}
+    for _, r in df_filtrado.iterrows():
+        popup_html = f"""
+        <div style='color: black;'>
+            <b>{r['Despacho']}</b><br>
+            <b>Transporte:</b> {r['Transporte']}<br>
+            <b>Contacto:</b> {r['Contacto']}<br>
+            <hr>
+            <b>Cobertura:</b> {r['Clientes']}
+        </div>
         """
         folium.CircleMarker(
             location=[r['Lat'], r['Lon']],
-            radius=10,
-            color='red',
-            fill=True,
-            fill_color='red',
-            fill_opacity=0.7,
-            popup=folium.Popup(popup_content, max_width=300)
+            radius=10, color='red', fill=True, fill_color='red', fill_opacity=0.8,
+            popup=folium.Popup(popup_html, max_width=300)
         ).add_to(m)
     
     st_folium(m, width="100%", height=500)
 
 with col_info:
-    st.subheader("📋 Datos del Despacho")
-    if seleccion == "TODOS":
-        st.write("Selecciona una ciudad en el menú de la izquierda para ver el detalle.")
+    if len(df_filtrado) == 1:
+        row = df_filtrado.iloc[0]
+        st.success(f"📍 Punto: {row['Despacho']}")
+        st.write(f"**Transportista:** {row['Transporte']}")
+        st.write(f"**Contacto:** {row['Contacto']}")
+        st.write(f"**Teléfono:** {row['Teléfono']}")
+        st.warning(f"**Cobertura:** {row['Clientes']}")
+    elif len(df_filtrado) > 1:
+        st.info(f"Se encontraron {len(df_filtrado)} resultados. Selecciona uno para ver detalles.")
     else:
-        st.info(f"**Punto:** {df_display['Despacho'].iloc[0]}")
-        st.write(f"**Transportista:** {df_display['Transporte'].iloc[0]}")
-        st.write(f"**Contacto:** {df_display['Contacto'].iloc[0]}")
-        st.write(f"**Teléfono:** {df_display['Teléfono'].iloc[0]}")
-        st.warning(f"**Cobertura:** {df_display['Clientes'].iloc[0]}")
+        st.error("No se encontraron resultados para tu búsqueda.")
 
-st.dataframe(df_display[["Despacho", "Transporte", "Contacto", "Teléfono"]], hide_index=True)
+# Tabla inferior
+st.dataframe(df_filtrado[["Despacho", "Transporte", "Contacto", "Teléfono"]], hide_index=True, use_container_width=True)
